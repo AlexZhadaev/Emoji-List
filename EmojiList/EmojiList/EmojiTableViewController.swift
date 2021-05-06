@@ -17,10 +17,34 @@ class EmojiTableViewController: UITableViewController {
     
     override func viewDidLoad() {
         super.viewDidLoad()
-        // Uncomment the following line to preserve selection between presentations
-        // self.clearsSelectionOnViewWillAppear = false
         self.title = "Emoji List"
         self.navigationItem.leftBarButtonItem = self.editButtonItem
+    }
+    
+    @IBAction func unwindSegueFromAddScreen(segue: UIStoryboardSegue) {
+        guard segue.identifier == "saveUnwindSegue" else { return }
+        let addEmojiTableViewController = segue.source as! AddEmojiTableViewController
+        let emoji = addEmojiTableViewController.emoji
+        
+        if let selectedIndexPath = tableView.indexPathForSelectedRow {
+            emojiObjects[selectedIndexPath.row] = emoji
+            tableView.reloadRows(at: [selectedIndexPath], with: .fade)
+        } else {
+            let newEmojiIndexPath = IndexPath(row: emojiObjects.count, section: 0)
+            emojiObjects.append(emoji)
+            tableView.insertRows(at: [newEmojiIndexPath], with: .fade)
+        }
+    }
+    
+    override func prepare(for segue: UIStoryboardSegue, sender: Any?) {
+        super.prepare(for: segue, sender: sender)
+        guard segue.identifier == "editingEmojiSegue" else { return }
+        guard let indexPath = tableView.indexPathForSelectedRow else { return }
+        let emoji = emojiObjects[indexPath.row]
+        let navigationVC = segue.destination as! UINavigationController
+        let addEmojiTableViewController = navigationVC.topViewController as! AddEmojiTableViewController
+        addEmojiTableViewController.emoji = emoji
+        addEmojiTableViewController.title = "Edit"
     }
     
     // MARK: - Table view data source
@@ -60,5 +84,35 @@ class EmojiTableViewController: UITableViewController {
         let movedEmoji = emojiObjects.remove(at: sourceIndexPath.row)
         emojiObjects.insert(movedEmoji, at: destinationIndexPath.row)
         tableView.reloadData()
+    }
+    
+    override func tableView(_ tableView: UITableView, leadingSwipeActionsConfigurationForRowAt indexPath: IndexPath) -> UISwipeActionsConfiguration? {
+        let done = doneAction(at: indexPath)
+        let like = likeAction(at: indexPath)
+        return UISwipeActionsConfiguration(actions: [done, like])
+    }
+    
+    func doneAction(at indexPath: IndexPath) -> UIContextualAction {
+        let action = UIContextualAction(style: .destructive, title: "Done") { action, view, completion in
+            self.emojiObjects.remove(at: indexPath.row)
+            self.tableView.deleteRows(at: [indexPath], with: .fade)
+            completion(true)
+        }
+        action.backgroundColor = .systemGreen
+        action.image = UIImage(systemName: "checkmark.circle")
+        return action
+    }
+    
+    func likeAction(at indexPath: IndexPath) -> UIContextualAction {
+        var emoji = emojiObjects[indexPath.row]
+        
+        let action = UIContextualAction(style: .normal, title: "LikeIt") { action, view, completion in
+            emoji.haveLike = !emoji.haveLike
+            self.emojiObjects[indexPath.row] = emoji
+            completion(true)
+        }
+        action.backgroundColor = emoji.haveLike ? .systemRed : .systemGray
+        action.image = UIImage(systemName: "heart")
+        return action
     }
 }
